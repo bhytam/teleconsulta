@@ -1,0 +1,776 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Consulta Online</title>
+    
+    <!-- Favicons -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🩺</text></svg>">
+    
+    <!-- Google Fonts - Fontes leves para carregar rápido -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Daily.co SDK -->
+    <script crossorigin src="https://unpkg.com/@daily-co/daily-js"></script>
+    
+    <style>
+        :root {
+            --primary: #0D9488;
+            --primary-dark: #0F766E;
+            --primary-light: #14B8A6;
+            --accent: #F59E0B;
+            --bg-gradient-start: #F0FDFA;
+            --bg-gradient-end: #ECFDF5;
+            --text-primary: #134E4A;
+            --text-secondary: #5F7370;
+            --white: #FFFFFF;
+            --error: #DC2626;
+            --error-light: #FEE2E2;
+            --shadow-sm: 0 1px 2px rgba(13, 148, 136, 0.05);
+            --shadow-md: 0 4px 12px rgba(13, 148, 136, 0.1);
+            --shadow-lg: 0 8px 30px rgba(13, 148, 136, 0.15);
+            --radius: 16px;
+            --radius-sm: 10px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            height: 100%;
+            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 100%);
+            color: var(--text-primary);
+            overflow: hidden;
+        }
+
+        /* Container Principal */
+        .app-container {
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Header */
+        .header {
+            padding: 16px 20px;
+            background: var(--white);
+            border-bottom: 1px solid rgba(13, 148, 136, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-shrink: 0;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+            border-radius: var(--radius-sm);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            box-shadow: var(--shadow-md);
+        }
+
+        .logo-text {
+            font-weight: 700;
+            font-size: 18px;
+            color: var(--text-primary);
+        }
+
+        .logo-text span {
+            color: var(--primary);
+        }
+
+        .status-badge {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            background: var(--bg-gradient-start);
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #10B981;
+            animation: pulse 2s infinite;
+        }
+
+        .status-dot.waiting {
+            background: var(--accent);
+        }
+
+        .status-dot.error {
+            background: var(--error);
+            animation: none;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.6; transform: scale(0.9); }
+        }
+
+        /* Área Principal */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Tela de Entrada (Pre-call) */
+        .precall-screen {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            text-align: center;
+            animation: fadeIn 0.5s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .precall-card {
+            background: var(--white);
+            border-radius: var(--radius);
+            padding: 32px 24px;
+            max-width: 400px;
+            width: 100%;
+            box-shadow: var(--shadow-lg);
+        }
+
+        .doctor-avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+            font-size: 36px;
+            box-shadow: var(--shadow-md);
+        }
+
+        .precall-title {
+            font-size: 22px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            color: var(--text-primary);
+        }
+
+        .precall-subtitle {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-bottom: 24px;
+            line-height: 1.5;
+        }
+
+        .input-group {
+            margin-bottom: 16px;
+            text-align: left;
+        }
+
+        .input-label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: 6px;
+        }
+
+        .input-field {
+            width: 100%;
+            padding: 14px 16px;
+            border: 2px solid rgba(13, 148, 136, 0.15);
+            border-radius: var(--radius-sm);
+            font-size: 16px;
+            font-family: inherit;
+            transition: all 0.2s ease;
+            background: var(--white);
+        }
+
+        .input-field:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.1);
+        }
+
+        .input-field::placeholder {
+            color: #A1B5B3;
+        }
+
+        .join-button {
+            width: 100%;
+            padding: 16px 24px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: var(--white);
+            border: none;
+            border-radius: var(--radius-sm);
+            font-size: 16px;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 8px;
+            box-shadow: var(--shadow-md);
+        }
+
+        .join-button:hover {
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .join-button:active {
+            transform: translateY(0);
+        }
+
+        .join-button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .join-button svg {
+            width: 20px;
+            height: 20px;
+        }
+
+        /* Loading Spinner */
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top-color: var(--white);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Dicas de permissão */
+        .permission-tips {
+            margin-top: 20px;
+            padding: 16px;
+            background: rgba(13, 148, 136, 0.05);
+            border-radius: var(--radius-sm);
+            font-size: 13px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        .permission-tips strong {
+            color: var(--text-primary);
+        }
+
+        /* Container do Daily iframe */
+        .call-container {
+            flex: 1;
+            display: none;
+            position: relative;
+            background: #1A1A1A;
+        }
+
+        .call-container.active {
+            display: flex;
+        }
+
+        .call-container iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+
+        /* Mensagem de erro */
+        .error-message {
+            display: none;
+            padding: 12px 16px;
+            background: var(--error-light);
+            border: 1px solid var(--error);
+            border-radius: var(--radius-sm);
+            color: var(--error);
+            font-size: 14px;
+            margin-top: 16px;
+            text-align: left;
+        }
+
+        .error-message.show {
+            display: block;
+            animation: shake 0.4s ease;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+
+        /* Tela de Encerramento */
+        .end-screen {
+            display: none;
+            flex: 1;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            text-align: center;
+            animation: fadeIn 0.5s ease;
+        }
+
+        .end-screen.active {
+            display: flex;
+        }
+
+        .end-card {
+            background: var(--white);
+            border-radius: var(--radius);
+            padding: 32px 24px;
+            max-width: 400px;
+            width: 100%;
+            box-shadow: var(--shadow-lg);
+        }
+
+        .end-icon {
+            width: 72px;
+            height: 72px;
+            background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+            font-size: 32px;
+        }
+
+        .end-title {
+            font-size: 22px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            color: var(--text-primary);
+        }
+
+        .end-message {
+            font-size: 14px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+            margin-bottom: 24px;
+        }
+
+        .new-call-button {
+            padding: 14px 28px;
+            background: var(--white);
+            color: var(--primary);
+            border: 2px solid var(--primary);
+            border-radius: var(--radius-sm);
+            font-size: 15px;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .new-call-button:hover {
+            background: var(--primary);
+            color: var(--white);
+        }
+
+        /* Footer discreto */
+        .footer {
+            padding: 12px;
+            text-align: center;
+            font-size: 11px;
+            color: var(--text-secondary);
+            opacity: 0.7;
+        }
+
+        .precall-screen .footer {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+        }
+
+        /* Responsividade */
+        @media (max-width: 480px) {
+            .header {
+                padding: 12px 16px;
+            }
+
+            .logo-text {
+                font-size: 16px;
+            }
+
+            .status-badge {
+                padding: 4px 10px;
+                font-size: 11px;
+            }
+
+            .precall-card, .end-card {
+                padding: 24px 20px;
+            }
+
+            .doctor-avatar {
+                width: 64px;
+                height: 64px;
+                font-size: 28px;
+            }
+
+            .precall-title, .end-title {
+                font-size: 20px;
+            }
+
+            .input-field {
+                padding: 12px 14px;
+            }
+
+            .join-button {
+                padding: 14px 20px;
+            }
+        }
+
+        /* Esconde elementos quando em chamada */
+        .in-call .precall-screen,
+        .in-call .footer {
+            display: none;
+        }
+
+        /* Ajuste para telas muito pequenas */
+        @media (max-height: 600px) {
+            .precall-card {
+                padding: 20px 16px;
+            }
+
+            .doctor-avatar {
+                width: 56px;
+                height: 56px;
+                font-size: 24px;
+                margin-bottom: 12px;
+            }
+
+            .precall-title {
+                font-size: 18px;
+            }
+
+            .precall-subtitle {
+                margin-bottom: 16px;
+            }
+
+            .permission-tips {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container" id="appContainer">
+        <!-- Header -->
+        <header class="header">
+            <div class="logo">
+                <div class="logo-icon">🩺</div>
+                <div class="logo-text">RENOV.AI Tele<span>Consulta</span></div>
+            </div>
+            <div class="status-badge" id="statusBadge">
+                <div class="status-dot waiting" id="statusDot"></div>
+                <span id="statusText">Aguardando</span>
+            </div>
+        </header>
+
+        <!-- Conteúdo Principal -->
+        <main class="main-content">
+            <!-- Tela de Entrada -->
+            <div class="precall-screen" id="precallScreen">
+                <div class="precall-card">
+                    <div class="doctor-avatar">👨‍⚕️</div>
+                    <h1 class="precall-title" id="roomTitle">Sala de Consulta</h1>
+                    <p class="precall-subtitle" id="roomSubtitle">
+                        Informe seu nome para entrar na consulta online. 
+                        Certifique-se de estar em um local silencioso e bem iluminado.
+                    </p>
+
+                    <div class="input-group">
+                        <label class="input-label" for="userName">Seu nome</label>
+                        <input 
+                            type="text" 
+                            id="userName" 
+                            class="input-field" 
+                            placeholder="Digite seu nome completo"
+                            autocomplete="name"
+                            maxlength="50"
+                        >
+                    </div>
+
+                    <button class="join-button" id="joinButton" onclick="joinCall()">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M15.05 5A5 5 0 0 1 19 8.95M15.05 1A9 9 0 0 1 23 8.94m-1 7.98v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+                        </svg>
+                        Entrar na Consulta
+                    </button>
+
+                    <div class="error-message" id="errorMessage"></div>
+
+                    <div class="permission-tips">
+                        <strong>📱 Dica:</strong> Quando solicitado, permita o acesso à câmera e ao microfone do seu dispositivo.
+                    </div>
+                </div>
+
+                <footer class="footer">
+                    Conexão segura e criptografada
+                </footer>
+            </div>
+
+            <!-- Container da Chamada -->
+            <div class="call-container" id="callContainer"></div>
+
+            <!-- Tela de Encerramento -->
+            <div class="end-screen" id="endScreen">
+                <div class="end-card">
+                    <div class="end-icon">✓</div>
+                    <h2 class="end-title">Consulta Encerrada</h2>
+                    <p class="end-message">
+                        Obrigado por utilizar nosso serviço de teleconsulta. 
+                        Esperamos que sua experiência tenha sido satisfatória.
+                    </p>
+                    <button class="new-call-button" onclick="location.reload()">
+                        Voltar ao Início
+                    </button>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // ========================================
+        // CONFIGURAÇÃO - ALTERE AQUI
+        // ========================================
+        const CONFIG = {
+            // Sua URL base do Daily.co (crie em https://dashboard.daily.co)
+            // Formato: https://SEU-DOMINIO.daily.co/
+            DAILY_DOMAIN: 'https://bhytam.daily.co/',
+            
+            // Nome da sala padrão (pode ser sobrescrito via URL)
+            DEFAULT_ROOM: 'consulta',
+            
+            // Configurações opcionais
+            SHOW_LEAVE_BUTTON: true,
+            SHOW_FULLSCREEN_BUTTON: true,
+            START_VIDEO_OFF: false,
+            START_AUDIO_OFF: false
+        };
+
+        // ========================================
+        // LÓGICA DA APLICAÇÃO
+        // ========================================
+        let callFrame = null;
+
+        // Obtém parâmetros da URL
+        function getUrlParams() {
+            const params = new URLSearchParams(window.location.search);
+            return {
+                room: params.get('room') || params.get('sala') || CONFIG.DEFAULT_ROOM,
+                name: params.get('name') || params.get('nome') || '',
+                doctor: params.get('doctor') || params.get('medico') || '',
+                title: params.get('title') || params.get('titulo') || ''
+            };
+        }
+
+        // Inicializa a página com os parâmetros
+        function initPage() {
+            const params = getUrlParams();
+            
+            // Preenche o nome se vier pela URL
+            if (params.name) {
+                document.getElementById('userName').value = params.name;
+            }
+            
+            // Personaliza título se fornecido
+            if (params.title) {
+                document.getElementById('roomTitle').textContent = params.title;
+            }
+            
+            // Personaliza subtítulo se tiver nome do médico
+            if (params.doctor) {
+                document.getElementById('roomSubtitle').innerHTML = 
+                    `Você está entrando na consulta com <strong>Dr(a). ${params.doctor}</strong>.<br>
+                    Certifique-se de estar em um local silencioso e bem iluminado.`;
+            }
+
+            // Valida se Daily.co está configurado
+            if (CONFIG.DAILY_DOMAIN === 'https://seu-dominio.daily.co/') {
+                showError('⚠️ Configure o DAILY_DOMAIN no código antes de usar.');
+            }
+        }
+
+        // Mostra erro
+        function showError(message) {
+            const errorEl = document.getElementById('errorMessage');
+            errorEl.textContent = message;
+            errorEl.classList.add('show');
+        }
+
+        // Esconde erro
+        function hideError() {
+            document.getElementById('errorMessage').classList.remove('show');
+        }
+
+        // Atualiza status
+        function updateStatus(status, dot) {
+            document.getElementById('statusText').textContent = status;
+            const dotEl = document.getElementById('statusDot');
+            dotEl.className = 'status-dot';
+            if (dot) dotEl.classList.add(dot);
+        }
+
+        // Entra na chamada
+        async function joinCall() {
+            hideError();
+            
+            const userName = document.getElementById('userName').value.trim();
+            if (!userName) {
+                showError('Por favor, informe seu nome para continuar.');
+                document.getElementById('userName').focus();
+                return;
+            }
+
+            const params = getUrlParams();
+            const roomUrl = CONFIG.DAILY_DOMAIN + params.room;
+
+            // Atualiza UI para loading
+            const joinButton = document.getElementById('joinButton');
+            joinButton.disabled = true;
+            joinButton.innerHTML = '<div class="spinner"></div> Conectando...';
+            updateStatus('Conectando...', 'waiting');
+
+            try {
+                // Cria o frame do Daily
+                callFrame = DailyIframe.createFrame(
+                    document.getElementById('callContainer'),
+                    {
+                        iframeStyle: {
+                            width: '100%',
+                            height: '100%',
+                            border: 'none',
+                            borderRadius: '0'
+                        },
+                        showLeaveButton: CONFIG.SHOW_LEAVE_BUTTON,
+                        showFullscreenButton: CONFIG.SHOW_FULLSCREEN_BUTTON
+                    }
+                );
+
+                // Event listeners
+                callFrame.on('joined-meeting', () => {
+                    document.getElementById('appContainer').classList.add('in-call');
+                    document.getElementById('callContainer').classList.add('active');
+                    document.getElementById('precallScreen').style.display = 'none';
+                    updateStatus('Em consulta', '');
+                });
+
+                callFrame.on('left-meeting', () => {
+                    document.getElementById('callContainer').classList.remove('active');
+                    document.getElementById('endScreen').classList.add('active');
+                    updateStatus('Encerrada', '');
+                });
+
+                callFrame.on('error', (error) => {
+                    console.error('Daily error:', error);
+                    handleCallError(error);
+                });
+
+                // Entra na sala
+                await callFrame.join({
+                    url: roomUrl,
+                    userName: userName,
+                    startVideoOff: CONFIG.START_VIDEO_OFF,
+                    startAudioOff: CONFIG.START_AUDIO_OFF
+                });
+
+            } catch (error) {
+                console.error('Erro ao entrar:', error);
+                handleCallError(error);
+            }
+        }
+
+        // Trata erros de chamada
+        function handleCallError(error) {
+            const joinButton = document.getElementById('joinButton');
+            joinButton.disabled = false;
+            joinButton.innerHTML = `
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M15.05 5A5 5 0 0 1 19 8.95M15.05 1A9 9 0 0 1 23 8.94m-1 7.98v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+                </svg>
+                Tentar Novamente
+            `;
+            updateStatus('Erro', 'error');
+
+            let errorMessage = 'Não foi possível conectar. ';
+            
+            if (error.message?.includes('not found') || error.errorMsg?.includes('not found')) {
+                errorMessage += 'A sala de consulta não existe ou expirou.';
+            } else if (error.message?.includes('permission') || error.message?.includes('NotAllowed')) {
+                errorMessage += 'Permita o acesso à câmera e microfone nas configurações do navegador.';
+            } else if (error.message?.includes('network') || !navigator.onLine) {
+                errorMessage += 'Verifique sua conexão com a internet.';
+            } else {
+                errorMessage += 'Tente novamente ou entre em contato com a clínica.';
+            }
+
+            showError(errorMessage);
+
+            if (callFrame) {
+                callFrame.destroy();
+                callFrame = null;
+            }
+        }
+
+        // Enter para submeter
+        document.addEventListener('DOMContentLoaded', () => {
+            initPage();
+            
+            document.getElementById('userName').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    joinCall();
+                }
+            });
+        });
+
+        // Confirmação ao sair durante chamada
+        window.addEventListener('beforeunload', (e) => {
+            if (callFrame) {
+                e.preventDefault();
+                e.returnValue = 'Você está em uma consulta. Deseja realmente sair?';
+            }
+        });
+    </script>
+</body>
+</html>
