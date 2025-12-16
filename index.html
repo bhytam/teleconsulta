@@ -655,10 +655,10 @@
         // Entra na chamada
         async function joinCall() {
             hideError();
-            
+
             const userName = document.getElementById('userName').value.trim();
             if (!userName) {
-                showError('Por favor, informe seu nome para continuar.');
+                showError('Por favor, informe seu nome.');
                 document.getElementById('userName').focus();
                 return;
             }
@@ -672,37 +672,62 @@
             joinButton.innerHTML = '<div class="spinner"></div> Conectando...';
             updateStatus('Conectando...', 'waiting');
 
+            // ✅ IMPORTANTE: mostre o container do vídeo ANTES de criar o iframe/entrar na sala
+            // (evita travar em "Conectando..." quando o iframe é criado em elemento oculto)
+            document.getElementById('callContainer').classList.add('active');
+            document.getElementById('precallScreen').style.display = 'none';
+
+            // Watchdog: evita ficar preso para sempre
+            const watchdog = setTimeout(() => {
+                showError('Demorou para conectar. Tente recarregar a página, trocar de rede (Wi‑Fi/4G) ou usar os botões de fallback.');
+                updateStatus('Erro', 'error');
+                try { callFrame?.destroy(); } catch {}
+                callFrame = null;
+
+                // Volta para a tela inicial
+                document.getElementById('precallScreen').style.display = '';
+                document.getElementById('callContainer').classList.remove('active');
+                document.getElementById('appContainer').classList.remove('in-call');
+
+                joinButton.disabled = false;
+                joinButton.innerHTML = `
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M15.05 5A5 5 0 0 1 19 8.95M15.05 1A9 9 0 0 1 23 8.94m-1.99 7.98A9 9 0 0 1 12.04 23c-1.5 0-2.96-.37-4.27-1.07M1 1l22 22M9 5A5 5 0 0 1 13 9v4a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2V9a5 5 0 0 1 2-4z"/>
+                    </svg>
+                    Tentar Novamente
+                `;
+            }, 15000);
+
             try {
                 // Cria o frame do Daily
                 callFrame = DailyIframe.createFrame(
                     document.getElementById('callContainer'),
                     {
+                        showLeaveButton: true,
+                        showFullscreenButton: true,
+                        showParticipantsBar: false,
                         iframeStyle: {
                             width: '100%',
                             height: '100%',
-                            border: 'none',
-                            borderRadius: '0'
-                        },
-                        showLeaveButton: CONFIG.SHOW_LEAVE_BUTTON,
-                        showFullscreenButton: CONFIG.SHOW_FULLSCREEN_BUTTON
+                            border: '0',
+                            borderRadius: '20px'
+                        }
                     }
                 );
 
-                // Event listeners
                 callFrame.on('joined-meeting', () => {
+                    clearTimeout(watchdog);
                     document.getElementById('appContainer').classList.add('in-call');
-                    document.getElementById('callContainer').classList.add('active');
-                    document.getElementById('precallScreen').style.display = 'none';
                     updateStatus('Em consulta', '');
                 });
 
                 callFrame.on('left-meeting', () => {
-                    document.getElementById('callContainer').classList.remove('active');
-                    document.getElementById('endScreen').classList.add('active');
-                    updateStatus('Encerrada', '');
+                    clearTimeout(watchdog);
+                    endCall();
                 });
 
                 callFrame.on('error', (error) => {
+                    clearTimeout(watchdog);
                     console.error('Daily error:', error);
                     handleCallError(error);
                 });
@@ -711,12 +736,13 @@
                 await callFrame.join({
                     url: roomUrl,
                     userName: userName,
-                    startVideoOff: CONFIG.START_VIDEO_OFF,
-                    startAudioOff: CONFIG.START_AUDIO_OFF
+                    startVideoOff: false,
+                    startAudioOff: false
                 });
 
             } catch (error) {
-                console.error('Erro ao entrar:', error);
+                clearTimeout(watchdog);
+                console.error('Error joining call:', error);
                 handleCallError(error);
             }
         }
@@ -727,19 +753,19 @@
             joinButton.disabled = false;
             joinButton.innerHTML = `
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M15.05 5A5 5 0 0 1 19 8.95M15.05 1A9 9 0 0 1 23 8.94m-1 7.98v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+                    <path d="M15.05 5A5 5 0 0 1 19 8.95M15.05 1A9 9 0 0 1 23 8.94m-1.99 7.98A9 9 0 0 1 12.04 23c-1.5 0-2.96-.37-4.27-1.07M1 1l22 22M9 5A5 5 0 0 1 13 9v4a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2V9a5 5 0 0 1 2-4z"/>
                 </svg>
                 Tentar Novamente
             `;
             updateStatus('Erro', 'error');
 
             let errorMessage = 'Não foi possível conectar. ';
-            
-            if (error.message?.includes('not found') || error.errorMsg?.includes('not found')) {
+
+            if (error?.message?.includes('not found') || error?.errorMsg?.includes('not found')) {
                 errorMessage += 'A sala de consulta não existe ou expirou.';
-            } else if (error.message?.includes('permission') || error.message?.includes('NotAllowed')) {
+            } else if (error?.message?.includes('permission') || error?.message?.includes('NotAllowed')) {
                 errorMessage += 'Permita o acesso à câmera e microfone nas configurações do navegador.';
-            } else if (error.message?.includes('network') || !navigator.onLine) {
+            } else if (error?.message?.includes('network') || !navigator.onLine) {
                 errorMessage += 'Verifique sua conexão com a internet.';
             } else {
                 errorMessage += 'Tente novamente ou entre em contato com a clínica.';
@@ -747,10 +773,13 @@
 
             showError(errorMessage);
 
-            if (callFrame) {
-                callFrame.destroy();
-                callFrame = null;
-            }
+            // Limpa o frame e volta para a tela inicial
+            try { callFrame?.destroy(); } catch {}
+            callFrame = null;
+
+            document.getElementById('appContainer').classList.remove('in-call');
+            document.getElementById('callContainer').classList.remove('active');
+            document.getElementById('precallScreen').style.display = '';
         }
 
         // Enter para submeter
